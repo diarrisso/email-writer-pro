@@ -121,12 +121,21 @@ export default function Home() {
         <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-indigo-600/5"></div>
         <div className="relative max-w-6xl mx-auto px-6 py-12">
           <div className="text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl mb-6 shadow-lg">
-              <Mail className="w-8 h-8 text-white" />
+            {/* Masinga Tech Branding */}
+            <div className="inline-flex items-center justify-center mb-6">
+              <div className="flex flex-col items-center">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl shadow-lg flex items-center justify-center">
+                    <Mail className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="text-left">
+                    <h1 className="text-3xl font-bold text-slate-800">Masinga Tech</h1>
+                    <p className="text-sm text-slate-500">Email Writer Pro</p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-4">
-              {t('emailWritingAssistant')}
-            </h1>
+            
             <p className="text-xl text-slate-600 max-w-2xl mx-auto">
               {t('transformThoughtsDescription')}
             </p>
@@ -299,6 +308,13 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Footer with Masinga Tech branding */}
+      <footer className="max-w-6xl mx-auto px-6 py-8 text-center">
+        <p className="text-sm text-slate-500">
+          Powered by <span className="font-semibold text-slate-700">Masinga Tech</span> | AI Email Assistant
+        </p>
+      </footer>
     </div>
   );
 }
