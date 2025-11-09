@@ -31,3 +31,8 @@ body {
     text-wrap: balance;
   }
 }
+
+/* Dark mode support */
+.dark {
+  color-scheme: dark;
+}

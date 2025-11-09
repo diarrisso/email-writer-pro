@@ -1,11 +1,20 @@
 'use client';
 
-import { useState } from 'react';
-import { Mail, MessageSquare, Sparkles, User, Send, Copy, Check } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Mail, MessageSquare, Sparkles, User, Send, Copy, Check, History, Trash2, X, Clock } from 'lucide-react';
 import { TRANSLATIONS } from '@/lib/translations';
 
 type Locale = 'en-US' | 'de-DE' | 'fr-FR';
 type ToneValue = 'professional' | 'warm' | 'concise' | 'formal' | 'casual' | 'persuasive';
+
+interface EmailHistoryItem {
+  id: string;
+  prompt: string;
+  email: string;
+  tone: ToneValue;
+  language: Locale;
+  timestamp: number;
+}
 
 export default function Home() {
   const [currentLocale, setCurrentLocale] = useState<Locale>('de-DE');
@@ -19,6 +28,62 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showContext, setShowContext] = useState(false);
+  
+  // History state
+  const [showHistory, setShowHistory] = useState(false);
+  const [emailHistory, setEmailHistory] = useState<EmailHistoryItem[]>([]);
+
+  // Load history from localStorage on mount
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('email_history');
+    if (savedHistory) {
+      try {
+        setEmailHistory(JSON.parse(savedHistory));
+      } catch (error) {
+        console.error('Error loading history:', error);
+      }
+    }
+  }, []);
+
+  // Save to history
+  const saveToHistory = (prompt: string, email: string) => {
+    const newItem: EmailHistoryItem = {
+      id: Date.now().toString(),
+      prompt,
+      email,
+      tone,
+      language: currentLocale,
+      timestamp: Date.now(),
+    };
+
+    const updatedHistory = [newItem, ...emailHistory].slice(0, 20); // Keep only last 20
+    setEmailHistory(updatedHistory);
+    localStorage.setItem('email_history', JSON.stringify(updatedHistory));
+  };
+
+  // Load from history
+  const loadFromHistory = (item: EmailHistoryItem) => {
+    setRawThoughts(item.prompt);
+    setGeneratedEmail(item.email);
+    setTone(item.tone);
+    setCurrentLocale(item.language);
+    setShowHistory(false);
+  };
+
+  // Delete single item
+  const deleteHistoryItem = (id: string) => {
+    const updatedHistory = emailHistory.filter(item => item.id !== id);
+    setEmailHistory(updatedHistory);
+    localStorage.setItem('email_history', JSON.stringify(updatedHistory));
+  };
+
+  // Clear all history
+  const clearHistory = () => {
+    if (confirm('Möchten Sie wirklich den gesamten Verlauf löschen?')) {
+      setEmailHistory([]);
+      localStorage.removeItem('email_history');
+    }
+  };
 
   const tones: Array<{ value: ToneValue; label: string; description: string }> = [
     { value: 'professional', label: t('professionalTone'), description: t('professionalDescription') },
@@ -54,6 +119,8 @@ export default function Home() {
       }
 
       setGeneratedEmail(data.generatedEmail);
+      // Save to history
+      saveToHistory(rawThoughts, data.generatedEmail);
     } catch (error) {
       console.error('Error generating email:', error);
       setGeneratedEmail('Sorry, there was an error generating your email. Please try again.');
@@ -78,10 +145,25 @@ export default function Home() {
     }
   };
 
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Gerade eben';
+    if (diffMins < 60) return `Vor ${diffMins} Min`;
+    if (diffHours < 24) return `Vor ${diffHours} Std`;
+    if (diffDays < 7) return `Vor ${diffDays} Tagen`;
+    return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* Language Selector */}
-      <div className="absolute top-4 right-4 z-10">
+      {/* Language Selector & History Button */}
+      <div className="absolute top-4 right-4 z-10 flex gap-2">
         <div className="bg-white/80 backdrop-blur-sm rounded-xl p-2 shadow-lg border border-white/20 flex gap-2">
           <button
             onClick={() => setCurrentLocale('en-US')}
@@ -114,7 +196,114 @@ export default function Home() {
             🇩🇪 DE
           </button>
         </div>
+        
+        {/* History Button */}
+        <button
+          onClick={() => setShowHistory(!showHistory)}
+          className="bg-white/80 backdrop-blur-sm rounded-xl px-4 py-2 shadow-lg border border-white/20 hover:bg-white transition-all flex items-center gap-2 font-medium text-slate-700"
+        >
+          <History className="w-5 h-5" />
+          Verlauf ({emailHistory.length})
+        </button>
       </div>
+
+      {/* History Sidebar */}
+      {showHistory && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowHistory(false)}
+          />
+          
+          {/* Sidebar */}
+          <div className="relative w-full max-w-lg bg-white shadow-2xl overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-slate-200 p-6 z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <History className="w-6 h-6 text-blue-600" />
+                  <h2 className="text-2xl font-bold text-slate-800">Email-Verlauf</h2>
+                </div>
+                <button
+                  onClick={() => setShowHistory(false)}
+                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-slate-600" />
+                </button>
+              </div>
+              
+              {emailHistory.length > 0 && (
+                <button
+                  onClick={clearHistory}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors font-medium"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Gesamten Verlauf löschen
+                </button>
+              )}
+            </div>
+
+            <div className="p-6 space-y-4">
+              {emailHistory.length === 0 ? (
+                <div className="text-center py-12">
+                  <History className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                  <p className="text-slate-500 text-lg">Noch keine E-Mails generiert</p>
+                  <p className="text-slate-400 text-sm mt-2">Ihre Verlauf erscheint hier</p>
+                </div>
+              ) : (
+                emailHistory.map((item) => (
+                  <div
+                    key={item.id}
+                    className="bg-slate-50 rounded-xl p-4 border border-slate-200 hover:shadow-md transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-2 text-sm text-slate-500">
+                        <Clock className="w-4 h-4" />
+                        {formatDate(item.timestamp)}
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteHistoryItem(item.id);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 rounded transition-all"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-600" />
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded font-medium">
+                          {item.tone}
+                        </span>
+                        <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded font-medium">
+                          {item.language}
+                        </span>
+                      </div>
+                      
+                      <p className="text-sm text-slate-600 line-clamp-2 mb-2">
+                        <strong>Prompt:</strong> {item.prompt}
+                      </p>
+                      
+                      <p className="text-sm text-slate-500 line-clamp-3">
+                        {item.email.substring(0, 150)}...
+                      </p>
+                    </div>
+                    
+                    <button
+                      onClick={() => loadFromHistory(item)}
+                      className="mt-3 w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
+                    >
+                      Wiederverwenden
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div className="relative overflow-hidden">
